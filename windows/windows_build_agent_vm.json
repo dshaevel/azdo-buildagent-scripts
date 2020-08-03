@@ -296,7 +296,7 @@
                 "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
             ],
             "tags": {
-                "displayName": "config-app"
+                "displayName": "configure-build-agent"
             },
             "properties": {
                 "publisher": "Microsoft.Compute",
