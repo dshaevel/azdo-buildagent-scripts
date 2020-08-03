@@ -8,8 +8,13 @@ Param(
 #Install Azure DevOps Build Agent
 $azdoAgentDirectory = Join-Path $env:SystemDrive 'agent';
 New-Item -Path $azdoAgentDirectory -ItemType Directory -force | Out-Null;
-Set-Location $azdoAgentDirectory
-Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\vsts-agent-win-x64-2.172.2.zip", "$PWD")
+Set-Location $azdoAgentDirectory;
+
+$url = "https://vstsagentpackage.azureedge.net/agent/2.172.2/vsts-agent-win-x64-2.172.2.zip";
+$file = Join-Path $downloadDirectory ([System.IO.Path]::GetFileName($url));
+New-Object System.Net.WebClient.DownloadFile($url,$file);
+Expand-Archive -Path $file -DestinationPath $downloadDirectory;
+
 config --unattended --url $azdo_server_url --auth pat --token $azdo_pat --pool $azdo_agent_pool --agent $azdo_agent_name --work "_work" --runAsService --runAsAutoLogon --windowsLogonAccount "NT AUTHORITY\NETWORK SERVICE" --noRestart
 
 #Install Chocolatey
