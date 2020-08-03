@@ -75,13 +75,6 @@
                 "description": "The Azure DevOps Build Agent Pool."
             }
         },
-        "azdo_agent_name": {
-            "type": "string",
-            "defaultValue": "",
-            "metadata": {
-                "description": "The name of the Azure DevOps Build Agent."
-            }
-        },
         "azdo_pat": {
             "type": "securestring",
             "metadata": {
@@ -98,6 +91,7 @@
         "virtualNetworkName": "[concat(parameters('vmName'), '-vnet')]",
         "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
         "networkSecurityGroupName": "[concat(parameters('vmName'), '-nsg')]",
+        "azdo_agent_name": "[parameters('dnsLabelPrefix')]",
         "vmExtensionName": "vmcustomextension",
         "InstallScriptFileName": "configureBuildAgentVM.ps1",
         "InstallURL": "https://raw.githubusercontent.com/dshaevel/azdo-buildagent-scripts/master/windows/configureBuildAgentVM.ps1"
@@ -301,7 +295,7 @@
                     "fileUris": [
                         "[variables('InstallURL')]"
                     ],
-                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('InstallScriptFileName'), ' -azdo_server_url ', '\"', parameters('azdo_server_url'), '\"', ' -azdo_agent_pool ', '\"', parameters('azdo_agent_pool'), '\"', ' -azdo_agent_name ', '\"', parameters('azdo_agent_name'), '\"', ' -azdo_pat ', '\"', parameters('azdo_pat'), '\"')]"
+                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('InstallScriptFileName'), ' -azdo_server_url ', '\"', parameters('azdo_server_url'), '\"', ' -azdo_agent_pool ', '\"', parameters('azdo_agent_pool'), '\"', ' -azdo_agent_name ', '\"', variables('azdo_agent_name'), '\"', ' -azdo_pat ', '\"', parameters('azdo_pat'), '\"')]"
 
                 }
             }
