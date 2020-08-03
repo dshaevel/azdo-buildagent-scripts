@@ -82,12 +82,6 @@
                 "description": "The name of the Azure DevOps Build Agent."
             }
         },
-        "azdo_username": {
-            "type": "securestring",
-            "metadata": {
-                "description": "The Azure DevOps Username."
-            }
-        },
         "azdo_pat": {
             "type": "securestring",
             "metadata": {
