@@ -1,0 +1,323 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of the Virtual Machine."
+            }
+        },
+        "adminUsername": {
+            "defaultValue": "azureuser",
+            "type": "String",
+            "metadata": {
+                "description": "Username for the Virtual Machine."
+            }
+        },
+        "adminPassword": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
+        },
+        "dnsLabelPrefix": {
+            "type": "String",
+            "metadata": {
+                "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "windowsOSVersion": {
+            "defaultValue": "2019-Datacenter",
+            "allowedValues": [
+                "2016-Datacenter",
+                "2019-Datacenter"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+            }
+        },
+        "vmSize": {
+            "defaultValue": "",
+            "allowedValues": [
+                "Standard_D2_v3",
+                "Standard_D2s_v3"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "The VM size."
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "storageAccountName": {
+            "type": "String",
+            "metadata": {
+                "description": "Name of the Storage Account."
+            }
+        },
+        "azdo_server_url": {
+            "type": "string",
+            "metadata": {
+                "description": "The Azure DevOps Server URL: https://dev.azure.com/{your_devops_organization}"
+            }
+        },
+        "azdo_agent_pool": {
+            "type": "string",
+            "defaultValue": "Default",
+            "metadata": {
+                "description": "The Azure DevOps Build Agent Pool."
+            }
+        },
+        "azdo_agent_name": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The name of the Azure DevOps Build Agent."
+            }
+        },
+        "azdo_username": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Azure DevOps Username."
+            }
+        },
+        "azdo_pat": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Azure DevOps Personal Access Token used to authenticate the build agent."
+            }
+        }        
+    },
+    "variables": {
+        "nicName": "[concat(parameters('vmName'),'-nic')]",
+        "addressPrefix": "10.0.0.0/16",
+        "subnetName": "Subnet",
+        "subnetPrefix": "10.0.0.0/24",
+        "publicIPAddressName": "[concat(parameters('vmName'),'-ip')]",
+        "virtualNetworkName": "[concat(parameters('vmName'), '-vnet')]",
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
+        "networkSecurityGroupName": "[concat(parameters('vmName'), '-nsg')]",
+        "vmExtensionName": "vmcustomextension",
+        "InstallScriptFolder": ".",
+        "InstallScriptFileName": "configureBuildAgentVM.ps1",
+        "InstallURL": "[concat('https://', parameters('azdo_username'), ':', parameters('azdo_pat'), '@', 'dev.azure.com/davidshaevel/azdo-davidshaevel/_apis/git/repositories/azdo-buildagent-scripts/items?api-version=5.1&path=%2Fwindows%2FconfigureBuildAgentVM.ps1')]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "[parameters('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "Storage",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-04-01",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-04-01",
+            "name": "[variables('virtualNetworkName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('addressPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnetName')]",
+                        "properties": {
+                            "addressPrefix": "[variables('subnetPrefix')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-04-01",
+            "name": "[variables('nicName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            },
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-04-01",
+            "name": "[variables('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "tags": {},
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "HTTP",
+                        "properties": {
+                            "priority": 300,
+                            "protocol": "TCP",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourceAddressPrefix": "*",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*",
+                            "destinationPortRange": "80"
+                        }
+                    },
+                    {
+                        "name": "HTTPS",
+                        "properties": {
+                            "priority": 320,
+                            "protocol": "TCP",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourceAddressPrefix": "*",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*",
+                            "destinationPortRange": "443"
+                        }
+                    },
+                    {
+                        "name": "SSH",
+                        "properties": {
+                            "priority": 340,
+                            "protocol": "TCP",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourceAddressPrefix": "*",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*",
+                            "destinationPortRange": "22"
+                        }
+                    },
+                    {
+                        "name": "RDP",
+                        "properties": {
+                            "priority": 360,
+                            "protocol": "TCP",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourceAddressPrefix": "*",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*",
+                            "destinationPortRange": "3389"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2019-07-01",
+            "name": "[parameters('vmName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('vmName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "[parameters('windowsOSVersion')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "createOption": "FromImage"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))).primaryEndpoints.blob]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-07-01",
+            "name": "[concat(parameters('vmName'),'/', variables('vmExtensionName'))]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+            ],
+            "tags": {
+                "displayName": "config-app"
+            },
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.9",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {},
+                "settings": {
+                    "fileUris": [
+                        "[variables('InstallURL')]"
+                    ],
+                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('InstallScriptFolder'), '/', variables('InstallScriptFileName'), ' -azdo_server_url ', '\"', parameters('azdo_server_url'), '\"', ' -azdo_agent_pool ', '\"', parameters('azdo_agent_pool'), '\"', ' -azdo_agent_name ', '\"', parameters('azdo_agent_name'), '\"', ' -azdo_pat ', '\"', parameters('azdo_pat'), '\"')]"
+
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "hostname": {
+            "type": "String",
+            "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn]"
+        }
+    }
+}
