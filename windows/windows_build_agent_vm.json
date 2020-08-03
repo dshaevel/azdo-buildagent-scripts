@@ -39,7 +39,7 @@
             }
         },
         "vmSize": {
-            "defaultValue": "",
+            "defaultValue": "Standard_D2_v3",
             "allowedValues": [
                 "Standard_D2_v3",
                 "Standard_D2s_v3"
@@ -105,7 +105,6 @@
         "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
         "networkSecurityGroupName": "[concat(parameters('vmName'), '-nsg')]",
         "vmExtensionName": "vmcustomextension",
-        "InstallScriptFolder": ".",
         "InstallScriptFileName": "configureBuildAgentVM.ps1",
         "InstallURL": "[concat('https://', parameters('azdo_username'), ':', parameters('azdo_pat'), '@', 'dev.azure.com/davidshaevel/azdo-davidshaevel/_apis/git/repositories/azdo-buildagent-scripts/items?api-version=5.1&path=%2Fwindows%2FconfigureBuildAgentVM.ps1')]"
     },
@@ -308,7 +307,7 @@
                     "fileUris": [
                         "[variables('InstallURL')]"
                     ],
-                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('InstallScriptFolder'), '/', variables('InstallScriptFileName'), ' -azdo_server_url ', '\"', parameters('azdo_server_url'), '\"', ' -azdo_agent_pool ', '\"', parameters('azdo_agent_pool'), '\"', ' -azdo_agent_name ', '\"', parameters('azdo_agent_name'), '\"', ' -azdo_pat ', '\"', parameters('azdo_pat'), '\"')]"
+                    "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File ', variables('InstallScriptFileName'), ' -azdo_server_url ', '\"', parameters('azdo_server_url'), '\"', ' -azdo_agent_pool ', '\"', parameters('azdo_agent_pool'), '\"', ' -azdo_agent_name ', '\"', parameters('azdo_agent_name'), '\"', ' -azdo_pat ', '\"', parameters('azdo_pat'), '\"')]"
 
                 }
             }
