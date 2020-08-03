@@ -106,7 +106,7 @@
         "networkSecurityGroupName": "[concat(parameters('vmName'), '-nsg')]",
         "vmExtensionName": "vmcustomextension",
         "InstallScriptFileName": "configureBuildAgentVM.ps1",
-        "InstallURL": "[concat('https://', parameters('azdo_username'), ':', parameters('azdo_pat'), '@', 'dev.azure.com/davidshaevel/azdo-davidshaevel/_apis/git/repositories/azdo-buildagent-scripts/items?api-version=5.1&path=%2Fwindows%2FconfigureBuildAgentVM.ps1')]"
+        "InstallURL": "https://raw.githubusercontent.com/dshaevel/azdo-buildagent-scripts/master/windows/configureBuildAgentVM.ps1"
     },
     "resources": [
         {
